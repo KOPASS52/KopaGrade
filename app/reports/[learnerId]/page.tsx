@@ -1,35 +1,71 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, use } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { calculateNLSCGrade } from '@/lib/grading';
 
-export default function ReportCardPage({ params }) {
-  const [learner, setLearner] = useState(null);
-  const [grades, setGrades] = useState([]);
+// 1. Explicit Interfaces for Props & Data
+interface ReportCardPageProps {
+  params: Promise<{
+    learnerId: string;
+  }> | {
+    learnerId: string;
+  };
+}
+
+interface LearnerBio {
+  first_name: string;
+  last_name: string;
+  lin: string;
+  current_class: string;
+  stream?: string;
+  gender: string;
+}
+
+interface ProcessedGrade {
+  subjects?: {
+    name?: string;
+    subject_code?: string;
+  };
+  ca_score: number;
+  eoc_score: number;
+  totalScore: number;
+  grade: string;
+  descriptor: string;
+}
+
+export default function ReportCardPage({ params }: ReportCardPageProps) {
+  // Safe resolution for Next.js 14 and Next.js 15 async params
+  const resolvedParams = params instanceof Promise ? use(params) : params;
+  const learnerId = resolvedParams?.learnerId;
+
+  const [learner, setLearner] = useState<LearnerBio | null>(null);
+  const [grades, setGrades] = useState<ProcessedGrade[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Fetch student profile and grades from Supabase
   useEffect(() => {
     async function loadReportData() {
+      if (!learnerId) return;
+
       try {
         // 1. Fetch learner bio
         const { data: learnerData } = await supabase
           .from('learners')
           .select('*')
-          .eq('id', params.learnerId)
+          .eq('id', learnerId)
           .single();
 
         // 2. Fetch grades with joined subject names
         const { data: gradesData } = await supabase
           .from('grades')
           .select('*, subjects(name, subject_code)')
-          .eq('learner_id', params.learnerId);
+          .eq('learner_id', learnerId);
 
-        if (learnerData) setLearner(learnerData);
+        if (learnerData) setLearner(learnerData as LearnerBio);
         if (gradesData) {
           // Process raw scores through our NLSC grading engine
-          const processed = gradesData.map(g => {
+          const processed: ProcessedGrade[] = gradesData.map((g: any) => {
             const result = calculateNLSCGrade(g.ca_score, 20, g.eoc_score, 80);
             return {
               ...g,
@@ -47,8 +83,8 @@ export default function ReportCardPage({ params }) {
       }
     }
 
-    if (params.learnerId) loadReportData();
-  }, [params.learnerId]);
+    loadReportData();
+  }, [learnerId]);
 
   const handlePrint = () => {
     window.print();
@@ -81,18 +117,19 @@ export default function ReportCardPage({ params }) {
         {/* 1. School Header & Logo Area */}
         <div className="border-b-4 border-double border-blue-900 pb-3 mb-4 text-center relative">
           <div className="flex items-center justify-center gap-4">
-            {/* School Emblem / Badge */}
             <img
               src="/logo.png"
               alt="School Logo"
               className="w-20 h-20 object-contain"
-              />
+            />
+            <div>
               <h1 className="text-2xl font-black text-blue-950 uppercase tracking-wide">Koboko Parents Secondary School</h1>
               <p className="text-xs font-bold text-amber-600 italic">"Together for Excellence"</p>
-              <p className="text-xs text-slate-600">
+              <p className="text-xs text-slate-600 mt-1">
                 P.O. Box 52, Koboko, Uganda • Tel: +256 775 582 278 / +256 782 412 024<br />
                 Email: kobokoparentsss@gmail.com • Web: www.kobokoparentssecschool.ac.ug
               </p>
+            </div>
           </div>
           <div className="mt-2 inline-block bg-blue-900 text-white text-xs font-bold px-4 py-1 rounded-full uppercase tracking-wider">
             Continuous Assessment & Termly Performance Report
@@ -126,7 +163,7 @@ export default function ReportCardPage({ params }) {
           <tbody>
             {grades.length === 0 ? (
               <tr>
-                <td colSpan="6" className="p-4 text-center text-gray-500 italic border">No subject grades recorded for this term.</td>
+                <td colSpan={6} className="p-4 text-center text-gray-500 italic border">No subject grades recorded for this term.</td>
               </tr>
             ) : (
               grades.map((g, idx) => (
