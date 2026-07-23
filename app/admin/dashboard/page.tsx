@@ -8,6 +8,23 @@ import {
 } from 'recharts';
 import { Users, GraduationCap, Award, BookOpen, TrendingUp, RefreshCw } from 'lucide-react';
 
+// Define explicit TypeScript interfaces for charts and state
+interface GradeDistributionItem {
+  grade: string;
+  count: number;
+  color: string;
+}
+
+interface SubjectAverageItem {
+  subject: string;
+  average: number;
+}
+
+interface SubjectStat {
+  total: number;
+  count: number;
+}
+
 export default function AdminDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
@@ -17,8 +34,9 @@ export default function AdminDashboardPage() {
     topSubject: 'N/A'
   });
 
-  const [gradeDistribution, setGradeDistribution] = useState([]);
-  const [subjectAverages, setSubjectAverages] = useState([]);
+  // Explicitly type empty state arrays
+  const [gradeDistribution, setGradeDistribution] = useState<GradeDistributionItem[]>([]);
+  const [subjectAverages, setSubjectAverages] = useState<SubjectAverageItem[]>([]);
 
   useEffect(() => {
     fetchDashboardAnalytics();
@@ -39,12 +57,12 @@ export default function AdminDashboardPage() {
       if (error) throw error;
 
       if (gradesData && gradesData.length > 0) {
-        // Trackers
-        const gradeCounts = { A: 0, B: 0, C: 0, D: 0, E: 0 };
-        const subjectMap = {};
+        // Trackers with explicit TS types
+        const gradeCounts: Record<string, number> = { A: 0, B: 0, C: 0, D: 0, E: 0 };
+        const subjectMap: Record<string, SubjectStat> = {};
         let totalScoreSum = 0;
 
-        gradesData.forEach(g => {
+        gradesData.forEach((g: any) => {
           // Calculate score using NLSC engine
           const result = calculateNLSCGrade(g.ca_score, 20, g.eoc_score, 80);
           
@@ -56,7 +74,7 @@ export default function AdminDashboardPage() {
           totalScoreSum += result.totalScore;
 
           // Track scores per subject for averages
-          const subjectName = g.subjects?.name || 'Unknown';
+          const subjectName = (Array.isArray(g.subjects) ? g.subjects[0]?.name : g.subjects?.name) || 'Unknown';
           if (!subjectMap[subjectName]) {
             subjectMap[subjectName] = { total: 0, count: 0 };
           }
@@ -65,7 +83,7 @@ export default function AdminDashboardPage() {
         });
 
         // Format Grade Distribution for Chart
-        const formattedGrades = [
+        const formattedGrades: GradeDistributionItem[] = [
           { grade: 'Grade A (Exceptional)', count: gradeCounts.A, color: '#15803d' },
           { grade: 'Grade B (Outstanding)', count: gradeCounts.B, color: '#0369a1' },
           { grade: 'Grade C (Satisfactory)', count: gradeCounts.C, color: '#d97706' },
@@ -74,7 +92,7 @@ export default function AdminDashboardPage() {
         ];
 
         // Format Subject Averages for Chart
-        const formattedSubjects = Object.keys(subjectMap).map(sub => {
+        const formattedSubjects: SubjectAverageItem[] = Object.keys(subjectMap).map(sub => {
           const avg = Math.round(subjectMap[sub].total / subjectMap[sub].count);
           return { subject: sub, average: avg };
         }).sort((a, b) => b.average - a.average);
