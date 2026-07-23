@@ -1,38 +1,62 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { calculateNLSCGrade } from '@/lib/grading';
 
+// 1. Explicit TypeScript Interfaces
+interface Learner {
+  id: string | number;
+  first_name: string;
+  last_name: string;
+  lin: string;
+}
+
+interface Subject {
+  id: string | number;
+  name: string;
+  subject_code: string;
+}
+
+interface StatusMessage {
+  type: 'success' | 'error' | '';
+  text: string;
+}
+
 export default function EnterMarksPage() {
-  const [learners, setLearners] = useState([]);
-  const [subjects, setSubjects] = useState([]);
+  // Explicitly type empty state arrays and message object
+  const [learners, setLearners] = useState<Learner[]>([]);
+  const [subjects, setSubjects] = useState<Subject[]>([]);
   
   // Form state
-  const [selectedLearner, setSelectedLearner] = useState('');
-  const [selectedSubject, setSelectedSubject] = useState('');
-  const [year, setYear] = useState('2026');
-  const [term, setTerm] = useState('1');
-  const [caScore, setCaScore] = useState('');
-  const [eocScore, setEocScore] = useState('');
+  const [selectedLearner, setSelectedLearner] = useState<string>('');
+  const [selectedSubject, setSelectedSubject] = useState<string>('');
+  const [year, setYear] = useState<string>('2026');
+  const [term, setTerm] = useState<string>('1');
+  const [caScore, setCaScore] = useState<string>('');
+  const [eocScore, setEocScore] = useState<string>('');
 
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState({ type: '', text: '' });
+  const [loading, setLoading] = useState<boolean>(false);
+  const [message, setMessage] = useState<StatusMessage>({ type: '', text: '' });
 
   // 1. Fetch Learners and Subjects from Supabase when the page loads
   useEffect(() => {
     async function fetchData() {
-      const { data: learnersData } = await supabase.from('learners').select('id, first_name, last_name, lin');
-      const { data: subjectsData } = await supabase.from('subjects').select('id, name, subject_code');
+      const { data: learnersData } = await supabase
+        .from('learners')
+        .select('id, first_name, last_name, lin');
+      const { data: subjectsData } = await supabase
+        .from('subjects')
+        .select('id, name, subject_code');
       
-      if (learnersData) setLearners(learnersData);
-      if (subjectsData) setSubjects(subjectsData);
+      if (learnersData) setLearners(learnersData as Learner[]);
+      if (subjectsData) setSubjects(subjectsData as Subject[]);
     }
     fetchData();
   }, []);
 
-  // 2. Submit and Save to Database
-  const handleSaveGrade = async (e) => {
+  // 2. Submit and Save to Database with FormEvent typing
+  const handleSaveGrade = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
     setMessage({ type: '', text: '' });
@@ -49,7 +73,7 @@ export default function EnterMarksPage() {
       }
 
       // Save to Supabase using UPSERT
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('grades')
         .upsert(
           {
@@ -75,8 +99,11 @@ export default function EnterMarksPage() {
       setCaScore('');
       setEocScore('');
 
-    } catch (err) {
-      setMessage({ type: 'error', text: err.message });
+    } catch (err: any) {
+      setMessage({ 
+        type: 'error', 
+        text: err?.message || 'An unexpected error occurred while saving.' 
+      });
     } finally {
       setLoading(false);
     }
