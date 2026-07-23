@@ -1,6 +1,12 @@
 // lib/grading.js
 
-export function calculateNLSCGrade(caInput, caMax = 20, eocInput, eocMax = 100) {
+export function calculateNLSCGrade(
+  caInput: number, 
+  caMax: number = 20, 
+  eocInput: number, 
+  eocMax: number = 100
+) {
+  // ... rest of your code stays the same {
   // Validate ranges
   if (caInput < 0 || caInput > caMax) {
     throw new Error(`CA score must be between 0 and ${caMax}`);
